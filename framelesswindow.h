@@ -38,8 +38,11 @@ protected:
     //as a result, we can not drag and move the MainWindow with this "label1" again
     //we can fix this by add "label1" to a ignorelist, just call addIgnoreWidget(label1)
     void addIgnoreWidget(QWidget* widget);
-
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+#else
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+#endif
     void resizeEvent(QResizeEvent* event) override;
 
 private:
