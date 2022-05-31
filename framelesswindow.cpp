@@ -13,6 +13,7 @@
 #include <QResizeEvent>
 #include <QScreen>
 #include <memory>
+#include <QTimer>
 
 CFramelessWindow::CFramelessWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -37,7 +38,7 @@ void CFramelessWindow::setResizeable(bool resizeable)
         //we will get rid of titlebar and thick frame again in nativeEvent() later
         HWND hwnd = (HWND)this->winId();
         DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
-        ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
+        ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_POPUP | WS_THICKFRAME);
     } else {
         HWND hwnd = (HWND)this->winId();
         DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
@@ -109,7 +110,6 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
             long y = GET_Y_LPARAM(msg->lParam);
 
             if(m_bResizeable) {
-
                 bool resizeWidth = minimumWidth() != maximumWidth();
                 bool resizeHeight = minimumHeight() != maximumHeight();
 
@@ -232,6 +232,21 @@ void CFramelessWindow::resizeEvent(QResizeEvent *event)
         m_frames = QMargins();
         QMainWindow::setContentsMargins(m_margins);
     }
+}
+
+bool CFramelessWindow::event(QEvent *event)
+{
+    if(event->type() == QEvent::ScreenChangeInternal) {
+        // 通过设置Mask强制触发更新, 修正双屏拖拽时的错位问题, 同时会导致失去窗口阴影
+        const auto oldMask = mask();
+        setMask(QRegion(this->rect()));
+        setMask(oldMask);
+
+        // 重新设置窗口属性, 把窗口阴影带回来
+        setResizeable(m_bResizeable);
+    }
+
+    return QMainWindow::event(event);
 }
 
 void CFramelessWindow::setContentsMargins(const QMargins &margins)

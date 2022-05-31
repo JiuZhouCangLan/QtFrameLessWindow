@@ -68,13 +68,20 @@ QString MainWindow::currentMargins()
     QMargins margins = contentsMargins();
     QRect rect = contentsRect();
     return QString("Current Margins:%1,%2,%3,%4; ContentRect:%5,%6,%7,%8").\
-            arg(margins.left()).arg(margins.top()).\
-            arg(margins.right()).arg(margins.bottom()).\
-            arg(rect.left()).arg(rect.top()).\
-            arg(rect.right()).arg(rect.bottom());
+           arg(margins.left()).arg(margins.top()).\
+           arg(margins.right()).arg(margins.bottom()).\
+           arg(rect.left()).arg(rect.top()).\
+           arg(rect.right()).arg(rect.bottom());
 }
 
 void MainWindow::on_btnResizeable_clicked()
 {
     setResizeable(!isResizeable());
 }
+
+void MainWindow::on_pushButton_2_clicked()
+{
+    showMinimized();
+    showNormal();
+}
+

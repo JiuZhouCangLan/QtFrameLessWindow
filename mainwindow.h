@@ -4,8 +4,9 @@
 #include "framelesswindow.h"
 #include <QString>
 
-namespace Ui {
-class MainWindow;
+namespace Ui
+{
+    class MainWindow;
 }
 
 class MainWindow : public CFramelessWindow
@@ -23,6 +24,8 @@ private slots:
     void on_btnIncreaseMargin_clicked();
     void on_btnDecreaseMargin_clicked();
     void on_btnResizeable_clicked();
+
+    void on_pushButton_2_clicked();
 
 private:
     QString currentMargins();

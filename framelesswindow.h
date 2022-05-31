@@ -7,6 +7,7 @@
 #include <QList>
 #include <QMargins>
 #include <QRect>
+
 class CFramelessWindow : public QMainWindow
 {
     Q_OBJECT
@@ -44,6 +45,8 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 #endif
     void resizeEvent(QResizeEvent* event) override;
+
+    bool event(QEvent *event) override;
 
 private:
     QWidget* m_titlebar;
