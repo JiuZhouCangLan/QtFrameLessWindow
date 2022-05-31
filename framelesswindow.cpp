@@ -15,6 +15,10 @@
 #include <memory>
 #include <QTimer>
 
+#pragma warning(disable : 26434)
+#pragma comment(lib, "Dwmapi.lib") // Adds missing library, fixes error LNK2019: unresolved external symbol __imp__DwmExtendFrameIntoClientArea
+#pragma comment(lib, "user32.lib")
+
 CFramelessWindow::CFramelessWindow(QWidget *parent)
     : QMainWindow(parent),
       m_titlebar(Q_NULLPTR),
@@ -31,17 +35,17 @@ CFramelessWindow::CFramelessWindow(QWidget *parent)
 
 void CFramelessWindow::setResizeable(bool resizeable)
 {
-    bool visible = isVisible();
+    const bool visible = isVisible();
     m_bResizeable = resizeable;
     if (m_bResizeable) {
         //this line will get titlebar/thick frame/Aero back, which is exactly what we want
         //we will get rid of titlebar and thick frame again in nativeEvent() later
-        HWND hwnd = (HWND)this->winId();
-        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
+        HWND hwnd = HWND(this->winId());
+        const DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
         ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_POPUP | WS_THICKFRAME);
     } else {
-        HWND hwnd = (HWND)this->winId();
-        DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
+        HWND hwnd = HWND(this->winId());
+        const DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
         ::SetWindowLong(hwnd, GWL_STYLE, (style & ~WS_MAXIMIZEBOX & ~WS_CAPTION) | WS_THICKFRAME);
     }
 
@@ -87,9 +91,9 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
 {
     //Workaround for known bug -> check Qt forum : https://forum.qt.io/topic/93141/qtablewidget-itemselectionchanged/13
 #if (QT_VERSION == QT_VERSION_CHECK(5, 11, 1))
-    MSG* msg = *reinterpret_cast<MSG**>(message);
+    MSG* msg = *static_cast<MSG**>(message);
 #else
-    MSG* msg = reinterpret_cast<MSG*>(message);
+    MSG* msg = static_cast<MSG*>(message);
 #endif
 
     switch (msg->message) {
@@ -109,12 +113,12 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
             RECT winrect;
             GetWindowRect(HWND(winId()), &winrect);
 
-            long x = GET_X_LPARAM(msg->lParam);
-            long y = GET_Y_LPARAM(msg->lParam);
+            const long x = GET_X_LPARAM(msg->lParam);
+            const long y = GET_Y_LPARAM(msg->lParam);
 
             if(m_bResizeable) {
-                bool resizeWidth = minimumWidth() != maximumWidth();
-                bool resizeHeight = minimumHeight() != maximumHeight();
+                const bool resizeWidth = minimumWidth() != maximumWidth();
+                const bool resizeHeight = minimumHeight() != maximumHeight();
 
                 if(resizeWidth) {
                     //left border
@@ -166,8 +170,8 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
             if (!m_titlebar) return false;
 
             //support highdpi
-            double dpr = this->devicePixelRatioF();
-            QPoint pos = m_titlebar->mapFromGlobal(QPoint(x / dpr, y / dpr));
+            const double dpr = this->devicePixelRatioF();
+            const QPoint pos = m_titlebar->mapFromGlobal(QPoint(x / dpr, y / dpr));
 
             if (!m_titlebar->rect().contains(pos)) return false;
             QWidget* child = m_titlebar->childAt(pos);
@@ -188,7 +192,7 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
                 AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
 
                 //record frame area data
-                double dpr = this->devicePixelRatioF();
+                const double dpr = this->devicePixelRatioF();
 
                 m_frames.setLeft(abs(frame.left) / dpr + 0.5);
                 m_frames.setTop(abs(frame.bottom) / dpr + 0.5);
@@ -220,7 +224,7 @@ void CFramelessWindow::resizeEvent(QResizeEvent *event)
         std::unique_ptr<MONITORINFO> monitorInfo(new MONITORINFO);
         monitorInfo->cbSize = sizeof(MONITORINFO);
         GetMonitorInfo(monitor, monitorInfo.get());
-        auto workRect = monitorInfo->rcWork;
+        const auto workRect = monitorInfo->rcWork;
 
         // 补偿阴影尺寸计算带来的边缘超出边界问题
         if(event->size().width() > workRect.right - workRect.left) {
@@ -282,8 +286,8 @@ QMargins CFramelessWindow::contentsMargins() const
 QRect CFramelessWindow::contentsRect() const
 {
     QRect rect = QMainWindow::contentsRect();
-    int width = rect.width();
-    int height = rect.height();
+    const int width = rect.width();
+    const int height = rect.height();
     rect.setLeft(rect.left() - m_frames.left());
     rect.setTop(rect.top() - m_frames.top());
     rect.setWidth(width);
