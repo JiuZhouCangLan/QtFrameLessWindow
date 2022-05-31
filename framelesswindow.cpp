@@ -94,6 +94,9 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
 
     switch (msg->message) {
         case WM_NCCALCSIZE: {
+            NCCALCSIZE_PARAMS& params = *reinterpret_cast<NCCALCSIZE_PARAMS*>(msg->lParam);
+            if (params.rgrc[0].top != 0)
+                params.rgrc[0].top -= 1;
             QMainWindow::nativeEvent(eventType, message, result);
             //this kills the window frame and title bar we added with WS_THICKFRAME and WS_CAPTION
             *result = WVR_REDRAW;
@@ -187,14 +190,15 @@ void CFramelessWindow::addIgnoreWidget(QWidget* widget)
                 //record frame area data
                 double dpr = this->devicePixelRatioF();
 
-                m_frames.setLeft(abs(frame.left) / dpr);
-                m_frames.setTop(abs(frame.bottom) / dpr);
-                m_frames.setRight(abs(frame.right) / dpr);
-                m_frames.setBottom(abs(frame.bottom) / dpr);
+                m_frames.setLeft(abs(frame.left) / dpr + 0.5);
+                m_frames.setTop(abs(frame.bottom) / dpr + 0.5);
+                m_frames.setRight(abs(frame.right) / dpr + 0.5);
+                m_frames.setBottom(abs(frame.bottom) / dpr + 0.5);
 
                 m_bJustMaximized = true;
             } else {
                 if (m_bJustMaximized) {
+                    QMainWindow::setContentsMargins(m_margins);
                     m_bJustMaximized = false;
                     m_justNormaled = true;
                 }
@@ -228,12 +232,12 @@ void CFramelessWindow::resizeEvent(QResizeEvent *event)
             resize(event->size().width(), workRect.bottom - workRect.top + m_frames.top() + m_frames.bottom());
         }
     } else if(m_justNormaled) {
-        m_justNormaled = false;
         m_frames = QMargins();
         QMainWindow::setContentsMargins(m_margins);
     }
 }
 
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
 bool CFramelessWindow::event(QEvent *event)
 {
     if(event->type() == QEvent::ScreenChangeInternal) {
@@ -248,6 +252,7 @@ bool CFramelessWindow::event(QEvent *event)
 
     return QMainWindow::event(event);
 }
+#endif
 
 void CFramelessWindow::setContentsMargins(const QMargins &margins)
 {

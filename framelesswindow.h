@@ -2,7 +2,6 @@
 #define CFRAMELESSWINDOW_H
 #include <QObject>
 #include <QMainWindow>
-
 #include <QWidget>
 #include <QList>
 #include <QMargins>
@@ -43,8 +42,8 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 #else
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
-#endif
     void resizeEvent(QResizeEvent* event) override;
+#endif
 
     bool event(QEvent *event) override;
 
