@@ -232,7 +232,7 @@ void FramelessWindow::resizeEvent(QResizeEvent* event)
         const auto workRect = monitorInfo.rcWork;
 
         // 补偿阴影尺寸计算带来的边缘超出边界问题
-        if (event->size().width() > workRect.right - workRect.left) {
+        if (this->size().width() > workRect.right - workRect.left) {
             QMainWindow::setContentsMargins(m_frames + m_margins);
         }
     } else if (m_justNormaled) {
