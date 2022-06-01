@@ -9,7 +9,7 @@ namespace Ui
     class MainWindow;
 }
 
-class MainWindow : public CFramelessWindow
+class MainWindow : public FramelessWindow
 {
     Q_OBJECT
 

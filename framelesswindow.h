@@ -7,19 +7,16 @@
 #include <QMargins>
 #include <QRect>
 
-class CFramelessWindow : public QMainWindow
+class FramelessWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    explicit CFramelessWindow(QWidget *parent = 0);
+    explicit FramelessWindow(QWidget *parent = 0);
 
     // if resizeable is set to false, then the window can not be resized by mouse
     // but still can be resized programtically
     void setResizeable(bool resizeable = true);
-    inline bool isResizeable() const
-    {
-        return m_bResizeable;
-    }
+    bool isResizeable() const;
 
     // set border width, inside this aera, window can be resized by mouse
     void setResizeableAreaWidth(int width = 5);
@@ -42,10 +39,9 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 #else
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
-    void resizeEvent(QResizeEvent* event) override;
-#endif
-
     bool event(QEvent *event) override;
+#endif
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
     QWidget* m_titlebar;

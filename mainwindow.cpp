@@ -4,7 +4,7 @@
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
-    CFramelessWindow(parent),
+    FramelessWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
