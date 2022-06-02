@@ -39,8 +39,8 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 #else
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
-    bool event(QEvent *event) override;
 #endif
+    bool event(QEvent *event) override;
     void resizeEvent(QResizeEvent* event) override;
 
 private:

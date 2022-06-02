@@ -14,10 +14,6 @@
 #include <memory>
 #include <QTimer>
 
-#pragma warning(disable : 26434)
-#pragma comment(lib, "Dwmapi.lib") // Adds missing library, fixes error LNK2019: unresolved external symbol __imp__DwmExtendFrameIntoClientArea
-#pragma comment(lib, "user32.lib")
-
 FramelessWindow::FramelessWindow(QWidget *parent)
     : QMainWindow(parent),
       m_titlebar(Q_NULLPTR),
@@ -195,25 +191,21 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
             if (::IsZoomed(msg->hwnd)) {
                 // 通过拖拽标题栏到屏幕上边界执行窗口最大化时, 如果窗口有一部分在显示区域之外, 大概率会导致最大化之后, 窗口边缘超出屏幕, 因此在此之前, 将窗口拉回显示区域
                 if(m_windowMoving) {
-                    RECT rect{};
-                    GetClientRect(msg->hwnd, &rect);
+                    RECT windowRect{};
+                    GetWindowRect(msg->hwnd, &windowRect);
 
-                    HMONITOR monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
-                    MONITORINFO monitorInfo{};
-                    monitorInfo.cbSize = sizeof(MONITORINFO);
-                    GetMonitorInfo(monitor, &monitorInfo);
-                    const auto workRect = monitorInfo.rcWork;
+                    const auto workRect = qApp->primaryScreen()->availableVirtualGeometry();
 
-                    const QPoint currentPos = pos();
+                    const QPoint currentPos(windowRect.left, windowRect.top);
                     QPoint targetPos = currentPos;
 
                     // 左越界
-                    if(workRect.left > currentPos.x()) {
-                        targetPos.setX(workRect.left);
+                    if(workRect.left() > currentPos.x()) {
+                        targetPos.setX(workRect.left());
                     }
                     // 右越界
-                    if(workRect.right < currentPos.x() + rect.right - rect.left) {
-                        targetPos.setX(workRect.right - rect.right + rect.left);
+                    if(workRect.right() < windowRect.right) {
+                        targetPos.setX(workRect.right() - windowRect.right + windowRect.left);
                     }
 
                     if(currentPos != targetPos) {
@@ -242,17 +234,16 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
             }
             return false;
         }
-        case WM_MOVING: {
+        case WM_MOVING:
             m_windowMoving = true;
-            return QMainWindow::nativeEvent(eventType, message, result);
-        }
-        case WM_EXITSIZEMOVE : {
+            break;
+        case WM_EXITSIZEMOVE :
             m_windowMoving = false;
-            return QMainWindow::nativeEvent(eventType, message, result);
-        }
+            break;
         default:
-            return QMainWindow::nativeEvent(eventType, message, result);
+            break;
     }
+    return QMainWindow::nativeEvent(eventType, message, result);
 }
 
 void FramelessWindow::resizeEvent(QResizeEvent* event)
@@ -272,27 +263,44 @@ void FramelessWindow::resizeEvent(QResizeEvent* event)
             QMainWindow::setContentsMargins(m_frames + m_margins);
         }
     } else if (m_justNormaled) {
+        m_justNormaled = false;
         m_frames = QMargins();
         QMainWindow::setContentsMargins(m_margins);
     }
 }
 
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
 bool FramelessWindow::event(QEvent* event)
 {
-    if (event->type() == QEvent::ScreenChangeInternal) {
-        // 通过设置Mask强制触发更新, 修正双屏拖拽时的错位问题, 同时会导致失去窗口阴影
-        const auto oldMask = mask();
-        setMask(QRegion(this->rect()));
-        setMask(oldMask);
+    switch (event->type()) {
+        case QEvent::WindowStateChange: {
+            // 在窗口最大化时, 用鼠标向下拖拽标题栏还原窗口, 不松手然后重新贴边最大化, 此时再进行窗口还原时(包括双击标题栏, showNormal()等方式), 标题栏会有一部分在屏幕之外
+            // 这种现象无论有没有使用无边框属性都会发生, 应该是 Qt 的又一个 Bug (测试场景 Qt 5.15/Qt 6.3 + Win10)
+            // 此处进行行为修正
+            if(windowState() == Qt::WindowNoState) {
+                const auto workRect = qApp->primaryScreen()->availableVirtualGeometry();
+                if(pos().y() < workRect.top()) {
+                    move(pos().x(), workRect.top());
+                }
+            }
+            break;
+        }
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+        case QEvent::ScreenChangeInternal: {
+            // 通过设置Mask强制触发更新, 修正双屏拖拽时的错位问题, 同时会导致失去窗口阴影
+            const auto oldMask = mask();
+            setMask(QRegion(this->rect()));
+            setMask(oldMask);
 
-        // 重新设置窗口属性, 把窗口阴影带回来
-        setResizeable(m_bResizeable);
+            // 重新设置窗口属性, 把窗口阴影带回来
+            setResizeable(m_bResizeable);
+            break;
+        }
+#endif
+        default:
+            break;
     }
-
     return QMainWindow::event(event);
 }
-#endif
 
 void FramelessWindow::setContentsMargins(const QMargins& margins)
 {
