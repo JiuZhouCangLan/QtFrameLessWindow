@@ -193,6 +193,34 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
         } // end case WM_NCHITTEST
         case WM_GETMINMAXINFO: {
             if (::IsZoomed(msg->hwnd)) {
+                // 通过拖拽标题栏到屏幕上边界执行窗口最大化时, 如果窗口有一部分在显示区域之外, 大概率会导致最大化之后, 窗口边缘超出屏幕, 因此在此之前, 将窗口拉回显示区域
+                if(m_windowMoving) {
+                    RECT rect{};
+                    GetClientRect(msg->hwnd, &rect);
+
+                    HMONITOR monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
+                    MONITORINFO monitorInfo{};
+                    monitorInfo.cbSize = sizeof(MONITORINFO);
+                    GetMonitorInfo(monitor, &monitorInfo);
+                    const auto workRect = monitorInfo.rcWork;
+
+                    const QPoint currentPos = pos();
+                    QPoint targetPos = currentPos;
+
+                    // 左越界
+                    if(workRect.left > currentPos.x()) {
+                        targetPos.setX(workRect.left);
+                    }
+                    // 右越界
+                    if(workRect.right < currentPos.x() + rect.right - rect.left) {
+                        targetPos.setX(workRect.right - rect.right + rect.left);
+                    }
+
+                    if(currentPos != targetPos) {
+                        move(targetPos);
+                    }
+                }
+
                 RECT frame = {0, 0, 0, 0};
                 AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
                 frame = {frame.left, frame.top, frame.right, frame.bottom};
@@ -213,6 +241,14 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
                 }
             }
             return false;
+        }
+        case WM_MOVING: {
+            m_windowMoving = true;
+            return QMainWindow::nativeEvent(eventType, message, result);
+        }
+        case WM_EXITSIZEMOVE : {
+            m_windowMoving = false;
+            return QMainWindow::nativeEvent(eventType, message, result);
         }
         default:
             return QMainWindow::nativeEvent(eventType, message, result);

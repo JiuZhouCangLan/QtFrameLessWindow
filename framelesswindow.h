@@ -52,6 +52,7 @@ private:
     bool m_bJustMaximized;
     bool m_bResizeable;
     bool m_justNormaled = false;
+    bool m_windowMoving = false; // 窗口正在移动标识
 
 private slots:
     void onTitleBarDestroyed();
