@@ -278,8 +278,12 @@ bool FramelessWindow::event(QEvent* event)
             // 此处进行行为修正
             if(windowState() == Qt::WindowNoState) {
                 const auto workRect = qApp->primaryScreen()->availableVirtualGeometry();
-                if(pos().y() < workRect.top()) {
-                    move(pos().x(), workRect.top());
+                // 这个地方不能直接用 pos() 方法, 因为 Qt 的尺寸和位置相关接口总是延迟几帧, 此时拿到的 pos() 仍然是最大化时的位置
+                RECT rect;
+                GetWindowRect(reinterpret_cast<HWND>(this->winId()), &rect);
+
+                if(rect.top < workRect.top()) {
+                    move(rect.left, workRect.top());
                 }
             }
             break;
