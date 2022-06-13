@@ -103,9 +103,24 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
 
     switch (msg->message) {
         case WM_NCCALCSIZE: {
-            QMainWindow::nativeEvent(eventType, message, result);
             // this kills the window frame and title bar we added with WS_THICKFRAME and WS_CAPTION
-            *result = WVR_REDRAW;
+            WINDOWPLACEMENT wPos;
+            // GetWindowPlacement fail if this member is not set correctly.
+            wPos.length = sizeof( wPos );
+            GetWindowPlacement(msg->hwnd, &wPos);
+            if( wPos.showCmd != SW_SHOWMAXIMIZED ) {
+                RECT borderThickness;
+                SetRectEmpty( &borderThickness );
+                AdjustWindowRectEx( &borderThickness,
+                                    GetWindowLongPtr(msg->hwnd, GWL_STYLE ) & ~WS_CAPTION, FALSE, NULL );
+                borderThickness.left *= -1;
+                NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
+                // Add 1 pixel to the top border to make the window resizable from the top border
+                sz->rgrc[ 0 ].left += borderThickness.left - 1;
+                sz->rgrc[ 0 ].right -= borderThickness.right;
+                sz->rgrc[ 0 ].bottom -= borderThickness.bottom;
+                *result = 0;
+            }
             return true;
         }
         case WM_NCHITTEST: {
@@ -240,6 +255,11 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
         case WM_EXITSIZEMOVE :
             m_windowMoving = false;
             break;
+        case WM_WINDOWPOSCHANGING: {
+            auto* windowPos = reinterpret_cast<WINDOWPOS*>(msg->lParam);
+            windowPos->flags |= SWP_NOCOPYBITS;
+            break;
+        }
         default:
             break;
     }
