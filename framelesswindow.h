@@ -22,10 +22,10 @@ public:
     void setResizeableAreaWidth(int width = 5);
 
     // 继承而来的非虚函数
-    void setContentsMargins(const QMargins &margins);
-    void setContentsMargins(int left, int top, int right, int bottom);
-    QMargins contentsMargins() const;
-    QRect contentsRect() const;
+    //    void setContentsMargins(const QMargins &margins);
+    //    void setContentsMargins(int left, int top, int right, int bottom);
+    //    QMargins contentsMargins() const;
+    //    QRect contentsRect() const;
 
 protected:
     //set a widget which will be treat as SYSTEM titlebar
@@ -41,18 +41,12 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
 #endif
     bool event(QEvent *event) override;
-    void resizeEvent(QResizeEvent* event) override;
 
 private:
     QWidget* m_titlebar;
     QList<QWidget*> m_whiteList;
     int m_borderWidth;
-    QMargins m_margins;
-    QMargins m_frames;
-    bool m_bJustMaximized;
     bool m_bResizeable;
-    bool m_justNormaled = false;
-    bool m_windowMoving = false; // 窗口正在移动标识
 
 private slots:
     void onTitleBarDestroyed();

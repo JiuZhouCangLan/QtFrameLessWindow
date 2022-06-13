@@ -18,7 +18,6 @@ FramelessWindow::FramelessWindow(QWidget *parent)
     : QMainWindow(parent),
       m_titlebar(Q_NULLPTR),
       m_borderWidth(5),
-      m_bJustMaximized(false),
       m_bResizeable(true)
 {
     setWindowFlag(Qt::Window, true);
@@ -38,7 +37,7 @@ void FramelessWindow::setResizeable(bool resizeable)
         // we will get rid of titlebar and thick frame again in nativeEvent() later
         const DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
 
-        // WS_CAPTION: 没有这项属性会导致在 VS 下出现窗口边框闪动(切换当前窗口时), 有这项属性会导致最大化时边缘超出屏幕范围, 因此保留这项属性, 最大化时尺寸另作处理
+        // WS_CAPTION: 没有这项属性会导致在 VS 下出现窗口边框闪动(窗口激活状态切换时), 有这项属性会导致最大化时内容超出屏幕, 因此保留这项属性, 最大化时尺寸另作处理
         ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_CAPTION | WS_THICKFRAME);
     } else {
         const DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
@@ -119,11 +118,19 @@ QDebug operator<<(QDebug d, const RECT &r)
         }
         case WM_NCCALCSIZE: {
             // this kills the window frame and title bar we added with WS_THICKFRAME and WS_CAPTION
+            NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
             if(!::IsZoomed(msg->hwnd)) {
                 // sz->rgrc[0] 的值必须跟原来的不同, 否则拉伸左/上边框缩放窗口时, 会导致右/下侧出现空白区域
                 // 窗口下边框产生边框区域视觉影响最小, 因此底部拉伸1像素
-                NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
                 sz->rgrc[ 0 ].bottom -= 1;
+            } else {
+                // 修正最大化时内容超出屏幕问题
+                const auto screenRect = this->window()->screen()->availableGeometry();
+                NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
+                sz->rgrc[0].left = qMax(sz->rgrc[0].left, long(screenRect.left()));
+                sz->rgrc[0].top = qMax(sz->rgrc[0].top, long(screenRect.top()));
+                sz->rgrc[0].right = qMin(sz->rgrc[0].right, long(screenRect.right()));
+                sz->rgrc[0].bottom = qMin(sz->rgrc[0].bottom, long(screenRect.bottom()));
             }
 
             *result = 0;
@@ -208,59 +215,6 @@ QDebug operator<<(QDebug d, const RECT &r)
             }
             return false;
         } // end case WM_NCHITTEST
-        case WM_GETMINMAXINFO: {
-            if (::IsZoomed(msg->hwnd)) {
-                // 通过拖拽标题栏到屏幕上边界执行窗口最大化时, 如果窗口有一部分在显示区域之外, 大概率会导致最大化之后, 窗口边缘超出屏幕, 因此在此之前, 将窗口拉回显示区域
-                if(m_windowMoving) {
-                    RECT windowRect{};
-                    GetWindowRect(msg->hwnd, &windowRect);
-
-                    const auto workRect = qApp->primaryScreen()->availableVirtualGeometry();
-
-                    const QPoint currentPos(windowRect.left, windowRect.top);
-                    QPoint targetPos = currentPos;
-
-                    // 左越界
-                    if(workRect.left() > currentPos.x()) {
-                        targetPos.setX(workRect.left());
-                    }
-                    // 右越界
-                    if(workRect.right() < windowRect.right) {
-                        targetPos.setX(workRect.right() - windowRect.right + windowRect.left);
-                    }
-
-                    if(currentPos != targetPos) {
-                        //move(targetPos);
-                    }
-                }
-
-                RECT frame = {0, 0, 0, 0};
-                AdjustWindowRectEx(&frame, WS_OVERLAPPEDWINDOW, FALSE, 0);
-                frame = {frame.left, frame.top, frame.right, frame.bottom};
-
-                // record frame area data
-                const double dpr = this->devicePixelRatioF();
-
-                m_frames.setLeft(abs(frame.left) / dpr + 0.5);
-                m_frames.setTop(abs(frame.bottom) / dpr + 0.5); // PS: 没有写错, frame.top 值有些异常, 原因不明
-                m_frames.setRight(abs(frame.right) / dpr + 0.5);
-                m_frames.setBottom(abs(frame.bottom) / dpr + 0.5);
-                m_bJustMaximized = true;
-            } else {
-                if (m_bJustMaximized) {
-                    QMainWindow::setContentsMargins(m_margins);
-                    m_bJustMaximized = false;
-                    m_justNormaled = true;
-                }
-            }
-            return false;
-        }
-        case WM_MOVING:
-            m_windowMoving = true;
-            break;
-        case WM_EXITSIZEMOVE :
-            m_windowMoving = false;
-            break;
         case WM_WINDOWPOSCHANGING: {
             auto* windowPos = reinterpret_cast<WINDOWPOS*>(msg->lParam);
             windowPos->flags |= SWP_NOCOPYBITS;
@@ -270,29 +224,6 @@ QDebug operator<<(QDebug d, const RECT &r)
             break;
     }
     return QMainWindow::nativeEvent(eventType, message, result);
-}
-
-void FramelessWindow::resizeEvent(QResizeEvent* event)
-{
-    QMainWindow::resizeEvent(event);
-
-    if (m_bJustMaximized) {
-        HWND hwnd = reinterpret_cast<HWND>(this->winId());
-        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        MONITORINFO monitorInfo{};
-        monitorInfo.cbSize = sizeof(MONITORINFO);
-        GetMonitorInfo(monitor, &monitorInfo);
-        const auto workRect = monitorInfo.rcWork;
-
-        // 补偿阴影尺寸计算带来的边缘超出边界问题
-        if (this->size().width() > workRect.right - workRect.left) {
-            QMainWindow::setContentsMargins(m_frames + m_margins);
-        }
-    } else if (m_justNormaled) {
-        m_justNormaled = false;
-        m_frames = QMargins();
-        QMainWindow::setContentsMargins(m_margins);
-    }
 }
 
 bool FramelessWindow::event(QEvent* event)
@@ -316,7 +247,7 @@ bool FramelessWindow::event(QEvent* event)
         }
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
         case QEvent::ScreenChangeInternal: {
-            // 通过设置Mask强制触发更新, 修正双屏拖拽时的错位问题, 同时会导致失去窗口阴影
+            // 通过设置Mask强制触发更新, 修正跨屏拖拽时的错位问题, 同时会导致失去窗口阴影
             const auto oldMask = mask();
             setMask(QRegion(this->rect()));
             setMask(oldMask);
@@ -330,38 +261,4 @@ bool FramelessWindow::event(QEvent* event)
             break;
     }
     return QMainWindow::event(event);
-}
-
-void FramelessWindow::setContentsMargins(const QMargins& margins)
-{
-    QMainWindow::setContentsMargins(margins + m_frames);
-    m_margins = margins;
-}
-
-void FramelessWindow::setContentsMargins(int left, int top, int right, int bottom)
-{
-    QMainWindow::setContentsMargins(left + m_frames.left(), top + m_frames.top(), right + m_frames.right(), bottom + m_frames.bottom());
-    m_margins.setLeft(left);
-    m_margins.setTop(top);
-    m_margins.setRight(right);
-    m_margins.setBottom(bottom);
-}
-
-QMargins FramelessWindow::contentsMargins() const
-{
-    QMargins margins = QMainWindow::contentsMargins();
-    margins -= m_frames;
-    return margins;
-}
-
-QRect FramelessWindow::contentsRect() const
-{
-    QRect rect = QMainWindow::contentsRect();
-    const int width = rect.width();
-    const int height = rect.height();
-    rect.setLeft(rect.left() - m_frames.left());
-    rect.setTop(rect.top() - m_frames.top());
-    rect.setWidth(width);
-    rect.setHeight(height);
-    return rect;
 }
