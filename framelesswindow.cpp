@@ -88,6 +88,16 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
     m_whiteList.append(widget);
 }
 
+QDebug operator<<(QDebug d, const RECT &r)
+{
+    QDebugStateSaver saver(d);
+    d.nospace();
+    d << "RECT(left=" << r.left << ", top=" << r.top
+      << ", right=" << r.right << ", bottom=" << r.bottom
+      << " (" << r.right - r.left << 'x' << r.bottom - r.top << "))";
+    return d;
+}
+
 #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
     bool FramelessWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
 #else
@@ -102,25 +112,21 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
 #endif
 
     switch (msg->message) {
+        case WM_NCACTIVATE: {
+            // 窗口激活时指示操作系统不要重新绘制非客户端区域, 窗口的边框就会始终处于非激活时较不明显的样式
+            msg->lParam = -1;
+            return true;
+        }
         case WM_NCCALCSIZE: {
             // this kills the window frame and title bar we added with WS_THICKFRAME and WS_CAPTION
-            WINDOWPLACEMENT wPos;
-            // GetWindowPlacement fail if this member is not set correctly.
-            wPos.length = sizeof( wPos );
-            GetWindowPlacement(msg->hwnd, &wPos);
-            if( wPos.showCmd != SW_SHOWMAXIMIZED ) {
-                RECT borderThickness;
-                SetRectEmpty( &borderThickness );
-                AdjustWindowRectEx( &borderThickness,
-                                    GetWindowLongPtr(msg->hwnd, GWL_STYLE ) & ~WS_CAPTION, FALSE, NULL );
-                borderThickness.left *= -1;
+            if(!::IsZoomed(msg->hwnd)) {
+                // sz->rgrc[0] 的值必须跟原来的不同, 否则拉伸左/上边框缩放窗口时, 会导致右/下侧出现空白区域
+                // 窗口下边框产生边框区域视觉影响最小, 因此底部拉伸1像素
                 NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
-                // Add 1 pixel to the top border to make the window resizable from the top border
-                sz->rgrc[ 0 ].left += borderThickness.left - 1;
-                sz->rgrc[ 0 ].right -= borderThickness.right;
-                sz->rgrc[ 0 ].bottom -= borderThickness.bottom;
-                *result = 0;
+                sz->rgrc[ 0 ].bottom -= 1;
             }
+
+            *result = 0;
             return true;
         }
         case WM_NCHITTEST: {
@@ -224,7 +230,7 @@ void FramelessWindow::addIgnoreWidget(QWidget* widget)
                     }
 
                     if(currentPos != targetPos) {
-                        move(targetPos);
+                        //move(targetPos);
                     }
                 }
 
