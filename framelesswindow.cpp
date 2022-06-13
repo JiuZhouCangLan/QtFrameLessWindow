@@ -216,6 +216,8 @@ QDebug operator<<(QDebug d, const RECT &r)
             return false;
         } // end case WM_NCHITTEST
         case WM_WINDOWPOSCHANGING: {
+            // Tell Windows to discard the entire contents of the client area, as re-using
+            // parts of the client area would lead to jitter during resize.
             auto* windowPos = reinterpret_cast<WINDOWPOS*>(msg->lParam);
             windowPos->flags |= SWP_NOCOPYBITS;
             break;
