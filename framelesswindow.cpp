@@ -111,22 +111,16 @@ QDebug operator<<(QDebug d, const RECT &r)
 #endif
 
     switch (msg->message) {
-        case WM_NCACTIVATE: {
-            // 窗口激活时指示操作系统不要重新绘制非客户端区域, 窗口的边框就会始终处于非激活时较不明显的样式
-            msg->lParam = -1;
-            return true;
-        }
         case WM_NCCALCSIZE: {
             // this kills the window frame and title bar we added with WS_THICKFRAME and WS_CAPTION
             NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
             if(!::IsZoomed(msg->hwnd)) {
-                // sz->rgrc[0] 的值必须跟原来的不同, 否则拉伸左/上边框缩放窗口时, 会导致右/下侧出现空白区域
-                // 窗口下边框产生边框区域视觉影响最小, 因此底部拉伸1像素
-                sz->rgrc[ 0 ].bottom -= 1;
+                // sz->rgrc[0] 的值必须跟原来的不同, 否则拉伸左/上边框缩放窗口时, 会导致右/下侧出现空白区域 (绘制抖动)
+                // 窗口下边框失去1像素对视觉影响最小, 因此底部减少1像素
+                sz->rgrc[ 0 ].bottom += 1;
             } else {
                 // 修正最大化时内容超出屏幕问题
                 const auto screenRect = this->window()->screen()->availableGeometry();
-                NCCALCSIZE_PARAMS* sz = reinterpret_cast< NCCALCSIZE_PARAMS* >( msg->lParam );
                 sz->rgrc[0].left = qMax(sz->rgrc[0].left, long(screenRect.left()));
                 sz->rgrc[0].top = qMax(sz->rgrc[0].top, long(screenRect.top()));
                 sz->rgrc[0].right = qMin(sz->rgrc[0].right, long(screenRect.right()));
