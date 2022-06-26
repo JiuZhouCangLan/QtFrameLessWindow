@@ -120,11 +120,16 @@ QDebug operator<<(QDebug d, const RECT &r)
                 sz->rgrc[ 0 ].bottom += 1;
             } else {
                 // 修正最大化时内容超出屏幕问题
-                const auto screenRect = this->window()->screen()->availableGeometry();
-                sz->rgrc[0].left = qMax(sz->rgrc[0].left, long(screenRect.left()));
-                sz->rgrc[0].top = qMax(sz->rgrc[0].top, long(screenRect.top()));
-                sz->rgrc[0].right = qMin(sz->rgrc[0].right, long(screenRect.right()));
-                sz->rgrc[0].bottom = qMin(sz->rgrc[0].bottom, long(screenRect.bottom()));
+                auto monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
+                MONITORINFO info;
+                info.cbSize = sizeof(MONITORINFO);
+                if(GetMonitorInfo(monitor, &info)) {
+                    const auto workRect = info.rcWork;
+                    sz->rgrc[0].left = qMax(sz->rgrc[0].left, long(workRect.left));
+                    sz->rgrc[0].top = qMax(sz->rgrc[0].top, long(workRect.top));
+                    sz->rgrc[0].right = qMin(sz->rgrc[0].right, long(workRect.right));
+                    sz->rgrc[0].bottom = qMin(sz->rgrc[0].bottom, long(workRect.bottom));
+                }
             }
 
             *result = 0;
