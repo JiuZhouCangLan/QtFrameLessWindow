@@ -21,12 +21,6 @@ public:
     // set border width, inside this aera, window can be resized by mouse
     void setResizeableAreaWidth(int width = 5);
 
-    // 继承而来的非虚函数
-    //    void setContentsMargins(const QMargins &margins);
-    //    void setContentsMargins(int left, int top, int right, int bottom);
-    //    QMargins contentsMargins() const;
-    //    QRect contentsRect() const;
-
 protected:
     //set a widget which will be treat as SYSTEM titlebar
     void setTitleBar(QWidget* titlebar);

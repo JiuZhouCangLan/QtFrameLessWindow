@@ -29,9 +29,12 @@ FramelessWindow::FramelessWindow(QWidget *parent)
 
 void FramelessWindow::setResizeable(bool resizeable)
 {
-    const bool visible = isVisible();
     m_bResizeable = resizeable;
-    HWND hwnd = reinterpret_cast<HWND>(this->winId());
+    HWND hwnd = reinterpret_cast<HWND>(this->effectiveWinId());
+    if(hwnd == nullptr) {
+        return;
+    }
+
     if (m_bResizeable) {
         // this line will get titlebar/thick frame/Aero back, which is exactly what we want
         // we will get rid of titlebar and thick frame again in nativeEvent() later
@@ -47,8 +50,6 @@ void FramelessWindow::setResizeable(bool resizeable)
     // we better left 1 piexl width of border untouch, so OS can draw nice shadow around it
     const MARGINS shadow = {1, 1, 1, 1};
     DwmExtendFrameIntoClientArea(hwnd, &shadow);
-
-    setVisible(visible);
 }
 
 bool FramelessWindow::isResizeable() const
@@ -246,6 +247,9 @@ bool FramelessWindow::event(QEvent* event)
             }
             break;
         }
+        case QEvent::WinIdChange:
+            setResizeable(m_bResizeable);
+            break;
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
         case QEvent::ScreenChangeInternal: {
             // 通过设置Mask强制触发更新, 修正跨屏拖拽时的错位问题, 同时会导致失去窗口阴影
