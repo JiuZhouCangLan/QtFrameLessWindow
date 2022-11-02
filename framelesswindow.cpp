@@ -129,7 +129,7 @@ QDebug operator<<(QDebug d, const RECT &r)
                 sz->rgrc[ 0 ].bottom += 1;
             } else {
                 // flags 包含 0x8000 时, 意味着可能出现了问题, 强制刷新窗口避免白屏, 微软的文档中找不到这个值的定义, 待研究
-                if(sz->lppos->flags & 0x8000) {
+                if(sz->lppos->flags & 0x8000 && IsWindowVisible(msg->hwnd)) {
                     m_forceUpdateTimer.start(); // 启动强制刷新定时器
                 } else {
                     m_forceUpdateTimer.stop(); // 窗口已正常显示, 没有必要再执行强制刷新
