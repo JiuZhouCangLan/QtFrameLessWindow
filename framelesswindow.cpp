@@ -25,6 +25,14 @@ FramelessWindow::FramelessWindow(QWidget *parent)
     setWindowFlag(Qt::WindowSystemMenuHint, true);
 
     setResizeable(m_bResizeable);
+
+    m_forceUpdateTimer.setSingleShot(true);
+    m_forceUpdateTimer.setInterval(0);
+    connect(&m_forceUpdateTimer, &QTimer::timeout, this, [this]() {
+        const auto oldMask = mask();
+        setMask(QRegion(this->rect()));
+        setMask(oldMask);
+    });
 }
 
 void FramelessWindow::setResizeable(bool resizeable)
@@ -120,16 +128,22 @@ QDebug operator<<(QDebug d, const RECT &r)
                 // 窗口下边框失去1像素对视觉影响最小, 因此底部减少1像素
                 sz->rgrc[ 0 ].bottom += 1;
             } else {
-                // 修正最大化时内容超出屏幕问题
-                auto monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
-                MONITORINFO info;
-                info.cbSize = sizeof(MONITORINFO);
-                if(GetMonitorInfo(monitor, &info)) {
-                    const auto workRect = info.rcWork;
-                    sz->rgrc[0].left = qMax(sz->rgrc[0].left, long(workRect.left));
-                    sz->rgrc[0].top = qMax(sz->rgrc[0].top, long(workRect.top));
-                    sz->rgrc[0].right = qMin(sz->rgrc[0].right, long(workRect.right));
-                    sz->rgrc[0].bottom = qMin(sz->rgrc[0].bottom, long(workRect.bottom));
+                // flags 包含 0x8000 时, 意味着可能出现了问题, 强制刷新窗口避免白屏, 微软的文档中找不到这个值的定义, 待研究
+                if(sz->lppos->flags & 0x8000) {
+                    m_forceUpdateTimer.start(); // 启动强制刷新定时器
+                } else {
+                    m_forceUpdateTimer.stop(); // 窗口已正常显示, 没有必要再执行强制刷新
+                    // 修正最大化时内容超出屏幕问题
+                    auto monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
+                    MONITORINFO info;
+                    info.cbSize = sizeof(MONITORINFO);
+                    if(GetMonitorInfo(monitor, &info)) {
+                        const auto workRect = info.rcWork;
+                        sz->rgrc[0].left = qMax(sz->rgrc[0].left, long(workRect.left));
+                        sz->rgrc[0].top = qMax(sz->rgrc[0].top, long(workRect.top));
+                        sz->rgrc[0].right = qMin(sz->rgrc[0].right, long(workRect.right));
+                        sz->rgrc[0].bottom = qMin(sz->rgrc[0].bottom, long(workRect.bottom));
+                    }
                 }
             }
 

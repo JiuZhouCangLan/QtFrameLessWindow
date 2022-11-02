@@ -6,6 +6,7 @@
 #include <QList>
 #include <QMargins>
 #include <QRect>
+#include <QTimer>
 
 class FramelessWindow : public QMainWindow
 {
@@ -41,6 +42,7 @@ private:
     QList<QWidget*> m_whiteList;
     int m_borderWidth;
     bool m_bResizeable;
+    QTimer m_forceUpdateTimer;
 
 private slots:
     void onTitleBarDestroyed();
