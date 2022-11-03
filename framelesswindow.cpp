@@ -20,10 +20,6 @@ FramelessWindow::FramelessWindow(QWidget *parent)
       m_borderWidth(5),
       m_bResizeable(true)
 {
-    setWindowFlag(Qt::Window, true);
-    setWindowFlag(Qt::FramelessWindowHint, true);
-    setWindowFlag(Qt::WindowSystemMenuHint, true);
-
     setResizeable(m_bResizeable);
 
     m_forceUpdateTimer.setSingleShot(true);
@@ -43,16 +39,19 @@ void FramelessWindow::setResizeable(bool resizeable)
         return;
     }
 
+    // this will get titlebar/thick frame/Aero back, which is exactly what we want
+    // we will get rid of titlebar and thick frame again in nativeEvent() later
     if (m_bResizeable) {
-        // this line will get titlebar/thick frame/Aero back, which is exactly what we want
-        // we will get rid of titlebar and thick frame again in nativeEvent() later
         const DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
-
         // WS_CAPTION: 没有这项属性会导致在 VS 下出现窗口边框闪动(窗口激活状态切换时), 有这项属性会导致最大化时内容超出屏幕, 因此保留这项属性, 最大化时尺寸另作处理
-        ::SetWindowLong(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_CAPTION | WS_THICKFRAME);
+        // WS_MAXIMIZEBOX: 添加这项属性以支持窗口拖动到屏幕边缘放大效果
+        // WS_SYSMENU: 禁用这项属性, 避免win7下出现系统的最大最小化和关闭按钮
+        // WS_THICKFRAME: 添加这项属性以使窗口附带系统阴影效果
+        ::SetWindowLong(hwnd, GWL_STYLE, (style & ~WS_SYSMENU) | WS_MAXIMIZEBOX | WS_CAPTION | WS_THICKFRAME);
     } else {
         const DWORD style = ::GetWindowLong(hwnd, GWL_STYLE);
-        ::SetWindowLong(hwnd, GWL_STYLE, (style & ~WS_MAXIMIZEBOX) | WS_THICKFRAME);
+        // WS_MAXIMIZEBOX: 不允许缩放窗口时, 禁用此属性
+        ::SetWindowLong(hwnd, GWL_STYLE, (style & ~WS_SYSMENU & ~WS_MAXIMIZEBOX) | WS_CAPTION | WS_THICKFRAME);
     }
 
     // we better left 1 piexl width of border untouch, so OS can draw nice shadow around it

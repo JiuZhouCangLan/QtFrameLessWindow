@@ -22,8 +22,6 @@ MainWindow::MainWindow(QWidget *parent) :
     //further more, btnMin/btnMax... are child widgets of widgetTitlebar too
     //but we DO NOT want to drag MainWindow by them
 #endif
-
-    ui->labelMargins->setText(currentMargins());
 }
 
 MainWindow::~MainWindow()
@@ -45,33 +43,6 @@ void MainWindow::on_btnMax_clicked()
 void MainWindow::on_btnClose_clicked()
 {
     close();
-}
-
-void MainWindow::on_btnIncreaseMargin_clicked()
-{
-    QMargins margin = contentsMargins();
-    margin += 2;
-    setContentsMargins(margin);
-    ui->labelMargins->setText(currentMargins());
-}
-
-void MainWindow::on_btnDecreaseMargin_clicked()
-{
-    QMargins margin = contentsMargins();
-    margin -= 2;
-    setContentsMargins(margin);
-    ui->labelMargins->setText(currentMargins());
-}
-
-QString MainWindow::currentMargins()
-{
-    QMargins margins = contentsMargins();
-    QRect rect = contentsRect();
-    return QString("Current Margins:%1,%2,%3,%4; ContentRect:%5,%6,%7,%8").\
-           arg(margins.left()).arg(margins.top()).\
-           arg(margins.right()).arg(margins.bottom()).\
-           arg(rect.left()).arg(rect.top()).\
-           arg(rect.right()).arg(rect.bottom());
 }
 
 void MainWindow::on_btnResizeable_clicked()
