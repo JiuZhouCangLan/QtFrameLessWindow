@@ -22,7 +22,6 @@ private slots:
     void on_btnMax_clicked();
     void on_btnClose_clicked();
     void on_btnResizeable_clicked();
-    void on_pushButton_2_clicked();
 
 private:
     Ui::MainWindow *ui;

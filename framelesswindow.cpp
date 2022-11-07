@@ -20,6 +20,7 @@ FramelessWindow::FramelessWindow(QWidget *parent)
       m_borderWidth(5),
       m_bResizeable(true)
 {
+    setWindowFlag(Qt::FramelessWindowHint);
     setResizeable(m_bResizeable);
 
     m_forceUpdateTimer.setSingleShot(true);
@@ -159,7 +160,7 @@ QDebug operator<<(QDebug d, const RECT &r)
             const long x = GET_X_LPARAM(msg->lParam);
             const long y = GET_Y_LPARAM(msg->lParam);
 
-            if (m_bResizeable) {
+            if (m_bResizeable && !IsZoomed(msg->hwnd)) {
                 const bool resizeWidth = minimumWidth() != maximumWidth();
                 const bool resizeHeight = minimumHeight() != maximumHeight();
 
@@ -205,17 +206,23 @@ QDebug operator<<(QDebug d, const RECT &r)
             if (0 != *result)
                 return true;
 
+            *result = DefWindowProc(msg->hwnd, msg->message, msg->wParam, msg->lParam);
+            const static QSet<long> sizeBorders = {HTLEFT, HTRIGHT, HTTOP, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTTOPLEFT, HTTOPRIGHT};
+            if(IsZoomed(msg->hwnd) && sizeBorders.contains(*result)) {
+                *result = HTNOWHERE;
+            }
+
             //*result still equals 0, that means the cursor locate OUTSIDE the frame area
             // but it may locate in titlebar area
             if (!m_titlebar)
-                return false;
+                return true;
 
             // support highdpi
             const double dpr = this->devicePixelRatioF();
             const QPoint pos = m_titlebar->mapFromGlobal(QPoint(x / dpr, y / dpr));
 
             if (!m_titlebar->rect().contains(pos))
-                return false;
+                return true;
             QWidget* child = m_titlebar->childAt(pos);
             if (!child) {
                 *result = HTCAPTION;
@@ -226,7 +233,8 @@ QDebug operator<<(QDebug d, const RECT &r)
                     return true;
                 }
             }
-            return false;
+
+            return true;
         } // end case WM_NCHITTEST
         case WM_WINDOWPOSCHANGING: {
             // Tell Windows to discard the entire contents of the client area, as re-using
@@ -241,7 +249,7 @@ QDebug operator<<(QDebug d, const RECT &r)
     return QMainWindow::nativeEvent(eventType, message, result);
 }
 
-bool FramelessWindow::event(QEvent* event)
+bool FramelessWindow::event(QEvent * event)
 {
     switch (event->type()) {
         case QEvent::WindowStateChange: {

@@ -24,6 +24,7 @@ win32{
 }
 LIBS += -ldwmapi
 LIBS += -lUser32
+LIBS += -lShcore
 
 CONFIG(debug, debug|release) {
 message("debug mode")

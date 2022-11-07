@@ -50,9 +50,3 @@ void MainWindow::on_btnResizeable_clicked()
     setResizeable(!isResizeable());
 }
 
-void MainWindow::on_pushButton_2_clicked()
-{
-    showMinimized();
-    showNormal();
-}
-
