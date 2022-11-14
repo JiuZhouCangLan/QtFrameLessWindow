@@ -40,7 +40,6 @@ public:
     {
         m_bResizeable = resizeable;
         HWND hwnd = reinterpret_cast<HWND>(this->effectiveWinId());
-        qDebug() << hwnd << resizeable;
         if(hwnd == nullptr) {
             return;
         }
@@ -106,6 +105,10 @@ protected:
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override
 #endif
     {
+        if (!T::isWindow()) {
+            return T::nativeEvent(eventType, message, result);
+        }
+
         // Workaround for known bug -> check Qt forum : https://forum.qt.io/topic/93141/qtablewidget-itemselectionchanged/13
 #if (QT_VERSION == QT_VERSION_CHECK(5, 11, 1))
         MSG* msg = *static_cast<MSG**>(message);
@@ -245,6 +248,10 @@ protected:
 
     bool event(QEvent *event) override
     {
+        if (!T::isWindow()) {
+            return T::event(event);
+        }
+
         switch (event->type()) {
             case QEvent::WindowStateChange: {
                 // 在窗口最大化时, 用鼠标向下拖拽标题栏还原窗口, 不松手然后重新贴边最大化, 此时再进行窗口还原时(包括双击标题栏, showNormal()等方式), 标题栏会有一部分在屏幕之外
@@ -280,7 +287,7 @@ protected:
             default:
                 break;
         }
-        return QWidget::event(event);
+        return T::event(event);
     }
 
 private:
