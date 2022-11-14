@@ -15,16 +15,14 @@ TEMPLATE = app
 SOURCES += main.cpp\
         mainwindow.cpp
 HEADERS  += mainwindow.h\
-            framelesswindow.h
+            NativeWindowTemplate.hpp
 FORMS    += mainwindow.ui
 
 win32{
-        SOURCES += \
-                framelesswindow.cpp
+        SOURCES +=
 }
 LIBS += -ldwmapi
 LIBS += -lUser32
-LIBS += -lShcore
 
 CONFIG(debug, debug|release) {
 message("debug mode")

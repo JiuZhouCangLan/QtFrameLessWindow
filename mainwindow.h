@@ -1,15 +1,16 @@
 ﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "framelesswindow.h"
+#include "NativeWindowTemplate.hpp"
 #include <QString>
+#include <QMainWindow>
 
 namespace Ui
 {
     class MainWindow;
 }
 
-class MainWindow : public FramelessWindow
+class MainWindow : public NativeWindowTemplate<QMainWindow>
 {
     Q_OBJECT
 

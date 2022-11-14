@@ -4,7 +4,7 @@
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
-    FramelessWindow(parent),
+    NativeWindowTemplate<QMainWindow>(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //labelTitleText is a child widget of widgetTitlebar
     //add labelTitleText to ignore list, so we can drag MainWindow by it too
-    addIgnoreWidget(ui->labelTitleText);
+    //addIgnoreWidget(ui->labelTitleText);
 
     //further more, btnMin/btnMax... are child widgets of widgetTitlebar too
     //but we DO NOT want to drag MainWindow by them
